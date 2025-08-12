@@ -29,6 +29,8 @@ from .settings_window import SettingsDialog
 from .exportoptions_window import ExportOptionsDialog
 from .theme_manager import ThemeManager
 from .preview_renderer import PreviewRenderer
+from .shortcuts import setup_shortcuts
+from . import window_state
 
 class MainWindow(QMainWindow):
     def __init__(self, config_manager, translator):
@@ -1564,53 +1566,7 @@ class MainWindow(QMainWindow):
                     anim.setPaused(True)
 
     def setupShortcuts(self):
-        # Clear existing shortcuts for live updates
-        for shortcut_item in self.shortcuts_list:
-            shortcut_item.setEnabled(False)
-            shortcut_item.activated.disconnect()
-        self.shortcuts_list.clear()
-
-        # Standard shortcut for opening preferences/settings
-        settings_shortcut = QShortcut(QKeySequence(QKeySequence.StandardKey.Preferences), self)
-        settings_shortcut.activated.connect(self.showSettingsDialog)
-        self.shortcuts_list.append(settings_shortcut)
-
-        # Standard shortcut for opening a file
-        open_file_shortcut = QShortcut(QKeySequence(QKeySequence.StandardKey.Open), self)
-        open_file_shortcut.activated.connect(self.openFile)
-        self.shortcuts_list.append(open_file_shortcut)
-
-        export_shortcut_str = self.config_manager.get_export_shortcut()
-        if export_shortcut_str:
-            export_shortcut = QShortcut(QKeySequence(export_shortcut_str), self)
-            export_shortcut.activated.connect(self.exportFile)
-            self.shortcuts_list.append(export_shortcut)
-
-        zoom_in_shortcut_str = self.config_manager.get_zoom_in_shortcut()
-        if zoom_in_shortcut_str:
-            zoom_in_shortcut = QShortcut(QKeySequence(zoom_in_shortcut_str), self)
-            zoom_in_shortcut.activated.connect(self.zoomIn)
-            self.shortcuts_list.append(zoom_in_shortcut)
-
-        zoom_out_shortcut_str = self.config_manager.get_zoom_out_shortcut()
-        if zoom_out_shortcut_str:
-            zoom_out_shortcut = QShortcut(QKeySequence(zoom_out_shortcut_str), self)
-            zoom_out_shortcut.activated.connect(self.zoomOut)
-            self.shortcuts_list.append(zoom_out_shortcut)
-
-        close_window_shortcut_str = self.config_manager.get_close_window_shortcut()
-        if close_window_shortcut_str:
-            close_window_shortcut = QShortcut(QKeySequence(close_window_shortcut_str), self)
-            close_window_shortcut.activated.connect(self.close) # Connect to self.close
-            self.shortcuts_list.append(close_window_shortcut)
-
-        play_pause_shortcut = QShortcut(QKeySequence(Qt.Key.Key_Space), self)
-        play_pause_shortcut.activated.connect(self.toggleAnimations)
-        self.shortcuts_list.append(play_pause_shortcut)
-
-        delete_layer_shortcut = QShortcut(QKeySequence(Qt.Key.Key_Delete), self)
-        delete_layer_shortcut.activated.connect(self.delete_selected_layer)
-        self.shortcuts_list.append(delete_layer_shortcut)
+        return setup_shortcuts(self)
 
     # settings section
     def showSettingsDialog(self):
@@ -1620,55 +1576,19 @@ class MainWindow(QMainWindow):
             self.setupShortcuts()
 
     def apply_default_sizes(self):
-        if hasattr(self, 'ui') and hasattr(self.ui, 'mainSplitter'):
-            total_width = self.ui.mainSplitter.width()
-            section_width = total_width // 3
-            self.ui.mainSplitter.setSizes([section_width, section_width, section_width])
-            
-        if hasattr(self, 'ui') and hasattr(self.ui, 'layersSplitter'):
-            total_height = self.ui.layersSplitter.height()
-            section_height = total_height // 2
-            self.ui.layersSplitter.setSizes([section_height, section_height])
+        return window_state.apply_default_sizes(self)
     
     def saveSplitterSizes(self):
-        if hasattr(self, 'ui') and hasattr(self.ui, 'mainSplitter'):
-            sizes = self.ui.mainSplitter.sizes()
-            self.config_manager.save_splitter_sizes("mainSplitter", sizes)
-            
-        if hasattr(self, 'ui') and hasattr(self.ui, 'layersSplitter'):
-            sizes = self.ui.layersSplitter.sizes()
-            self.config_manager.save_splitter_sizes("layersSplitter", sizes)
+        return window_state.save_splitter_sizes(self)
     
     def loadSplitterSizes(self):
-        if hasattr(self, 'ui') and hasattr(self.ui, 'mainSplitter'):
-            sizes = self.config_manager.get_splitter_sizes("mainSplitter")
-            if sizes:
-                self.ui.mainSplitter.setSizes(sizes)
-                
-        if hasattr(self, 'ui') and hasattr(self.ui, 'layersSplitter'):
-            sizes = self.config_manager.get_splitter_sizes("layersSplitter")
-            if sizes:
-                self.ui.layersSplitter.setSizes(sizes)
+        return window_state.load_splitter_sizes(self)
 
     def loadWindowGeometry(self):
-        geometry = self.config_manager.get_window_geometry()
-        
-        if geometry["remember_size"]:
-            self.resize(geometry["size"][0], geometry["size"][1])
-            self.move(geometry["position"][0], geometry["position"][1])
-            
-            if geometry["maximized"]:
-                self.showMaximized()
+        return window_state.load_window_geometry(self)
                 
     def saveWindowGeometry(self):
-        if self.isMaximized():
-            size = [self.normalGeometry().width(), self.normalGeometry().height()]
-            position = [self.normalGeometry().x(), self.normalGeometry().y()]
-            self.config_manager.save_window_geometry(size, position, True)
-        else:
-            size = [self.width(), self.height()]
-            position = [self.x(), self.y()]
-            self.config_manager.save_window_geometry(size, position, False)
+        return window_state.save_window_geometry(self)
 
     def closeEvent(self, event):
         if getattr(self, 'isDirty', False):
